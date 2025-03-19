@@ -1,0 +1,93 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+bun.lockb
+
+# Build output
+dist/
+.vite/
+.vitepress/dist/
+temp/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.swn
+*.bak
+.idea/
+.vscode/
+*.code-workspace
+
+# TypeScript
+*.tsbuildinfo
+
+# Env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Cache
+.cache/
+output.log
+turbo/
+
+# Storybook
+.storybook/
+out/
+storybook-static/
+
+# Jest
+coverage/
+.jest/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/e2e/videos/
+cypress/e2e/screenshots/
+
+# Vitest
+coverage/
+.vitest/
