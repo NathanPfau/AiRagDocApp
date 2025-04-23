@@ -5,7 +5,6 @@ import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.kotlin.datetime.CurrentDateTime
 import org.jetbrains.exposed.sql.kotlin.datetime.datetime
 
-// Table for storing document names uploaded by users.
 object UserDocuments : Table("user_documents") {
     val userId = text("user_id")
     val documentName = text("document_name")
@@ -13,7 +12,6 @@ object UserDocuments : Table("user_documents") {
     override val primaryKey = PrimaryKey(userId, documentName, name = "PK_UserDocuments")
 }
 
-// Table for storing chat session names and the threadId.
 object UserChats : Table("user_chats") {
     val userId = text("user_id")
     val threadId = text("thread_id")
@@ -25,7 +23,6 @@ object UserChats : Table("user_chats") {
     }
 }
 
-// Table for associating documents with chats.
 object UserChatDocuments : Table("user_chat_documents") {
     val threadId = text("thread_id").references(UserChats.threadId, onDelete = ReferenceOption.CASCADE)
     val userId = text("user_id")
@@ -33,7 +30,6 @@ object UserChatDocuments : Table("user_chat_documents") {
     override val primaryKey = PrimaryKey(threadId, userId, documentName, name = "PK_UserChatDocuments")
 }
 
-// Table for storing individual chat messages.
 object ChatMessages : Table("chat_messages") {
     val id = integer("id").autoIncrement()
     val threadId = text("thread_id").references(UserChats.threadId, onDelete = ReferenceOption.CASCADE)

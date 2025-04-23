@@ -11,4 +11,4 @@ class AgentState(TypedDict):
     user_id: str  # Store user ID for filtering results
     thread_id: str  # Store thread ID for multi-threaded conversation tracking
     rewrite_count: int  # Tracks how many times a query has been rewritten    
-    search_kwargs: dict # Filters for retrieval tool
+    search_kwargs: dict 

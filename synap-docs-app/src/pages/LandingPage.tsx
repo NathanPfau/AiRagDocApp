@@ -1,8 +1,9 @@
 import { Box, Button, VStack, HStack, Heading, Text} from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
+
 import "../styling/button.css"
-import "../styling/glass.css"
-import "../styling/global.css"
+import "../styling/shine.css"
+import "../styling/text-styles.css"
 <link rel="stylesheet" href="https://use.typekit.net/jao8smu.css"></link>
 
 const LandingPage = () => {

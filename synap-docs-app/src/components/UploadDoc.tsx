@@ -1,4 +1,3 @@
-// UploadDocs.tsx it the button for the uploading pdfs and starts the toast for upload status
 import React from 'react';
 import { Button, Box, Input } from '@chakra-ui/react';
 import { LuUpload } from 'react-icons/lu';

@@ -1,5 +1,3 @@
-# When new pdf uploaded it is chunked and each chunk has its own uuid so it can be passed to Pinecone
-# for deleting a pdf from the db
 import pymupdf
 import asyncio
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -10,7 +8,6 @@ from uuid import uuid4
 import asyncpg
 from app.config import Config
 
-# Stores vector uuids in db for reference if needs to delete a pdf
 async def insert_vector_ids(conn, user_id, doc_source, uuids):
     # Insert each UUID into the table
     for uid in uuids:
@@ -32,13 +29,14 @@ async def upload_text(pdf_path, doc_metadata: dict):
         user_id = doc_metadata["user_id"]
         source = doc_metadata["source"]
 
-        # Query vector store to see if a document already exists
+        # Query vector store to see if a document already exists, etc...
         existing_docs = await vector_store.asearch(
             query="check_duplicate", 
             search_type="similarity",
             filter={"user_id": user_id, "source": source}
         )
         if existing_docs:
+            # print(f"Document from source '{source}' already exists. Skipping upload.")
             return {"message": f"Document from source '{source}' already exists. Upload skipped."}
 
         # Extract text chunks from the PDF
@@ -48,10 +46,17 @@ async def upload_text(pdf_path, doc_metadata: dict):
 
         # Generate unique UUIDs for each text chunk
         uuids = [str(uuid4()) for _ in range(len(text_splits))]
+
         metadatas = [doc_metadata.copy() for _ in range(len(text_splits))]
 
+        # Debug info
+        # print("Text chunks:", text_splits)
+        # print("UUIDs:", uuids)
+
+        # Upload to vector store
         await vector_store.aadd_texts(texts=text_splits, metadatas=metadatas, ids=uuids)
 
+        # Now store the UUIDs in your PostgreSQL database for tracking
         conn = await asyncpg.connect(
             database=Config.RDS_DB,
             user=Config.RDS_USER,
@@ -61,10 +66,12 @@ async def upload_text(pdf_path, doc_metadata: dict):
         await insert_vector_ids(conn, user_id, source, uuids)
         await conn.close()
 
+        # print("Text uploaded successfully and vector IDs stored in the database.")
         return {"message": "Text uploaded successfully."}
 
     except Exception as e:
         error_details = traceback.format_exc()
+        # print(f"Failed to upload text: {error_details}")
         raise RuntimeError(f"Upload failed: {error_details}") from e
     
 async def extract_text_from_pdf(pdf_path):
@@ -77,7 +84,9 @@ async def extract_text_from_pdf(pdf_path):
         return text_splits
 
     except Exception as e:
+        # print(pdf_path)
         error_details = traceback.format_exc()
+        # print(f"Error extracting text from PDF {pdf_path}: {error_details}")
         raise RuntimeError(f"Text extraction failed for {pdf_path}: {error_details}") from e
 
 def _sync_extract_text_from_pdf(pdf_input):
@@ -86,7 +95,10 @@ def _sync_extract_text_from_pdf(pdf_input):
         pdf_input.seek(0)
         file_bytes = pdf_input.read()
         
+        # Wrap the bytes in a BytesIO stream
         pdf_stream = io.BytesIO(file_bytes)
+        
+        # Open the PDF using PyMuPDF
         doc = pymupdf.open(stream=pdf_stream, filetype="pdf")
         
         # Extract text from all pages
@@ -98,7 +110,7 @@ def _sync_extract_text_from_pdf(pdf_input):
         if not text.strip():
             raise ValueError("No text found in PDF. The document may be scanned or contain images instead of text.")
         
-        # Use text splitter to break text into chunks based on tokens
+        # Use your text splitter to break text into chunks
         text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
             chunk_size=512, chunk_overlap=20
         )
@@ -106,4 +118,5 @@ def _sync_extract_text_from_pdf(pdf_input):
     
     except Exception as e:
         error_details = traceback.format_exc()
+        # print(f"Error extracting text with PyMuPDF from PDF {pdf_input}: {error_details}")
         raise RuntimeError(f"Text extraction failed for {pdf_input}: {error_details}") from e

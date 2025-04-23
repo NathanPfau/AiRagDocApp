@@ -25,7 +25,7 @@ async def upload_pdf(
         doc_metadata = {"user_id": user_id, "source": source}
         await upload_text(file.file, doc_metadata)
     except Exception as e:
-        error_details = traceback.format_exc() 
+        error_details = traceback.format_exc()  # Capture full traceback
         return JSONResponse(content={"message": str(e), "traceback": error_details}, status_code=500)
 
     return JSONResponse(content={"filename": file.filename, "message": "PDF processed and graph stored successfully."})
@@ -38,14 +38,14 @@ async def ask_question(query: str, thread_id: str, user_id: str, document_names:
 
         # Calculate k dynamically: (5 * number of documents) but cap at 20
         num_docs = len(document_names)
-        k = min(5 * num_docs, 20)
+        k = min(5 * num_docs, 20) if num_docs > 0 else 5  # Default to 5 if no docs are specified
 
-        # Construct search filter, filters on user_id and the source names (pdf names)
+        # Construct search filters
         search_kwargs = {
             "k": k,
             "filter": {
                 "user_id": user_id,
-                "source": {"$in": document_names} 
+                "source": {"$in": document_names}  # Filter by document names
             }
         }
 
@@ -56,17 +56,16 @@ async def ask_question(query: str, thread_id: str, user_id: str, document_names:
             "search_kwargs": search_kwargs
         }
 
-        # Pass thread_id to graph so it uses the correct State
         config = {"configurable": {"thread_id": thread_id}}
 
         # Pass search_kwargs into graph execution
         result = await graph.ainvoke(inputs, config)
-        #xtract just the actual message field from the last message
+        #xtract just the "content" field from the last message
         last_message = result["messages"][-1]
         last_message_content = getattr(last_message, "content", "No content found.")
 
     except Exception as e:
-        error_details = traceback.format_exc()  
+        error_details = traceback.format_exc()  # Capture full traceback
         return JSONResponse(content={"message": str(e), "traceback": error_details}, status_code=500)
 
     return {"response": last_message_content}
@@ -86,7 +85,7 @@ async def delete_state(thread_id: str):
             # Delete from related tables first
             await conn.execute("DELETE FROM checkpoint_blobs WHERE thread_id = $1", thread_id)
             await conn.execute("DELETE FROM checkpoint_writes WHERE thread_id = $1", thread_id)
-            # Then delete from checkpoints
+            # Finally, delete from checkpoints
             await conn.execute("DELETE FROM checkpoints WHERE thread_id = $1", thread_id)
         
         await conn.close()
@@ -100,7 +99,7 @@ async def delete_state(thread_id: str):
 async def delete_document(user_id: str, doc_name: str):
     """Deletes a document from the vector store using the UUIDs stored in the database."""
     try:
-        # Retrieve the list of UUIDs from the database for the given user_id and doc_name
+        # Retrieve the list of UUIDs from the database for the given user_id and doc_name (doc_source)
         uuids = await get_document_uuids(user_id, doc_name)
         if not uuids:
             return JSONResponse(content={"message": "Document not found. Nothing to delete."}, status_code=404)
@@ -113,8 +112,9 @@ async def delete_document(user_id: str, doc_name: str):
         # Attempt to delete the document vectors by their UUIDs
         deletion_success = await vector_store.adelete(ids=uuids)
 
-        # Check deletion result, at time of writing code Pinecone does not send a bool if the delete was successful
+        # Check deletion result. (Some vector store methods return None on success.)
         if deletion_success is None or deletion_success:
+            # Optionally, remove the entries from your database as well
             await delete_document_uuids_from_db(user_id, doc_name)
             return {"response": f"Document '{doc_name}' for user '{user_id}' deleted successfully."}
         else:

@@ -1,0 +1,159 @@
+.message-window {
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  transform: translate3d(0, 0, 0.01px);
+  opacity: 0.999;
+  background: hsl(205deg 0% 0% / 0.8);
+  border-radius: 30px;
+  padding: 0.4em;
+}
+
+@property --angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+  }
+  
+  @property --x {
+    syntax: "<percentage>";
+    initial-value: 35%;
+    inherits: false;
+  }
+  
+  @property --shine {
+    syntax: "<color>";
+    initial-value: transparent;
+    inherits: false;
+  }
+  
+  @property --shadow-strength {
+    syntax: "<percentage>";
+    initial-value: 0%;
+    inherits: false;
+  }
+  
+  :root {
+    --h: 240;
+    --s: 97%;
+    --l: 50%;
+    --surface-1: hsl(var(--h) var(--s) calc(var(--l) + 4%));
+    --surface-2: hsl(var(--h) var(--s) calc(var(--l) + 8%));
+    --surface-3: hsl(var(--h) var(--s) calc(var(--l) + 12%));
+    --text: hsl(var(--h) var(--s) 96%);
+    --text-alt: hsl(var(--h) var(--s) 85%);
+    --shadow-color: var(--h) var(--s) 15%;
+    --shadow-strength: 1%;
+    --shadow: 0 -2px 5px 0 hsl(var(--shadow-color) /
+            calc(var(--shadow-strength) + 2%)),
+      0 1px 1px -2px hsl(var(--shadow-color) / calc(var(--shadow-strength) + 3%)),
+      0 2px 2px -2px hsl(var(--shadow-color) / calc(var(--shadow-strength) + 3%)),
+      0 5px 5px -2px hsl(var(--shadow-color) / calc(var(--shadow-strength) + 4%)),
+      0 9px 9px -2px hsl(var(--shadow-color) / calc(var(--shadow-strength) + 5%)),
+      0 16px 16px -2px hsl(var(--shadow-color) / calc(var(--shadow-strength) + 6%));
+    --space: 1rem;
+  }
+  
+  .message-gleam {
+    --_gleam: linear-gradient(
+        115deg,
+        transparent 40%,
+        var(--surface-3),
+        transparent 70%
+      )
+      var(--x) 0 / 600% 100% padding-box;
+    --_gleam-cover: radial-gradient(
+        circle at center,
+        var(--surface-1),
+        transparent
+      )
+      padding-box;
+    --_cover: linear-gradient(var(--surface-1), var(--surface-1)) padding-box;
+    --_shine: conic-gradient(
+        from var(--angle),
+        var(--shine),
+        transparent 20% 80%,
+        var(--shine)
+      )
+      border-box;
+    --_edges: linear-gradient(
+        155deg,
+        var(--surface-3),
+        var(--surface-2) 20% 80%,
+        var(--surface-3)
+      )
+      border-box;
+  
+    gap: var(--space);
+    position: relative;
+    padding: 1rem;
+    border-radius: 0.8rem;
+    border: 1px solid transparent;
+    box-shadow: var(--shadow);
+    background: var(--_gleam-cover), var(--_gleam), var(--_cover), var(--_shine),
+      var(--_edges);
+    max-width: 75%;
+  }
+
+  .message-gleam.ai {
+    --surface-1: hsl(0, 0%, 6%);
+    --surface-2: hsl(0, 0%, 10%);
+    --surface-3: hsl(0, 0%, 14%);
+    --shadow-color: 0, 0%, 100%;
+    --shadow-strength: 15%;
+    --text: hsl(0, 0%, 95%);
+    --text-alt: hsl(0, 0%, 85%);
+
+    --shine: hsla(0, 0%, 100%, 0.01); /* more transparent shine */
+
+    background: var(--_gleam-cover), var(--_gleam), var(--_cover);
+  }
+
+  
+  @supports (animation-timeline: view()) {
+    .message-gleam {
+      animation: linear both;
+      animation-name: gleam, shine, shadow;
+      animation-timeline: view();
+      animation-range: cover -10% cover 100%, entry 0% cover 65%,
+        entry 0% exit 150%;
+    }
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    .message-gleam {
+      animation: none !important;
+    }
+  }
+  
+  @keyframes gleam {
+    from {
+      --angle: -1turn;
+      --x: 0%;
+    }
+    to {
+      --angle: 1turn;
+      --x: 100%;
+    }
+  }
+  
+  @keyframes shadow {
+    from,
+    to {
+      box-shadow: none;
+    }
+    50%,
+    65% {
+      box-shadow: var(--shadow);
+    }
+  }
+  
+  @keyframes shine {
+    0%,
+    45% {
+      --shine: transparent;
+    }
+    80% {
+      --shine: hsl(var(--h) var(--s) calc(var(--l) + 38%));
+    }
+  }

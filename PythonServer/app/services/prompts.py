@@ -1,4 +1,3 @@
-# Prompts that are passed to each of the nodes in the graph
 from langchain_core.prompts import PromptTemplate
 
 def get_grader_prompt():

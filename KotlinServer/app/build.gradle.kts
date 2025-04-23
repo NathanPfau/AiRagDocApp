@@ -4,10 +4,12 @@ val logback_version: String by project
 val exposed_version: String by project
 
 plugins {
+    // Apply the shared build logic from a convention plugin.
+    // The shared code is located in `buildSrc/src/main/kotlin/kotlin-jvm.gradle.kts`.
     id("buildsrc.convention.kotlin-jvm")
     id("com.github.johnrengelman.shadow") version "8.1.1"
     kotlin("plugin.serialization") version "2.1.0"
-
+    // Apply the Application plugin to add support for building an executable JVM application.
     application
 }
 

@@ -1,32 +1,30 @@
-# Nodes.py is composed of the nodes and edges that make up the LangChain LangGraph
 from typing import Literal
 from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, Field
 from langsmith import traceable
 from langchain_core.messages import AIMessage, HumanMessage
 from app.graph.agent_state import AgentState
-import PythonServer.app.graph.prompts as PromptTemplate
+import app.services.prompts as PromptTemplate
 from app.services.llm_service import get_llm
 from app.services.pinecone_service import get_retriever_tool 
 
 
 def get_last_human_message(messages):
     """Finds the most recent HumanMessage in the messages list."""
-    for message in reversed(messages): 
+    for message in reversed(messages):  # Iterate in reverse order
         if isinstance(message, HumanMessage):
-            return message.content 
-    return None
+            return message.content  # Return the content of the last human message
+    return None  # Return None if no human messages are found
 
-# Simple helper function that returns the last 5 messages in the state
-# as context for the agent
 def filter_messages(messages: list):
+    # This is very simple helper function which only ever uses the last 5 messages
     return messages[-5:]
 
-# Used to adjust the count of user query rewrites
 def increment_count(state: AgentState):
         return {"rewrite_count": state["rewrite_count"] + 1}
 
 ### Edges
+
 @traceable
 async def grade_documents(state) -> Literal["generate", "rewrite"]:
     """
@@ -38,12 +36,14 @@ async def grade_documents(state) -> Literal["generate", "rewrite"]:
     Returns:
         str: A decision for whether the documents are relevant or not
     """
+
+    # Define LLM response schema
     class Grade(BaseModel):
         binary_score: str = Field(description="Relevance score 'yes' or 'no'")
 
     llm = get_llm()
+    # Use async LLM call
     llm_with_tool = llm.with_structured_output(Grade)
-
     prompt = PromptTemplate.get_grader_prompt()
     chain = prompt | llm_with_tool
 
@@ -59,13 +59,13 @@ async def grade_documents(state) -> Literal["generate", "rewrite"]:
     rewrite_count = state.get("rewrite_count", 0)
 
     if score == "yes" or rewrite_count >= 1:
-        "---DECISION: DOCS RELEVANT OR MAX REWRITES REACHED---"
         return "generate"
     else:
-        "---DECISION: DOCS NOT RELEVANT, REWRITING QUERY---"
         return "rewrite"
 
+
 ### Nodes
+
 @traceable
 async def agent(state):
     """
@@ -87,10 +87,10 @@ async def agent(state):
     #Dynamically create retriever tool for this request
     retriever_tool = await get_retriever_tool(search_kwargs)
 
-    # Clear search_kwargs for the next query
     if "search_kwargs" in state:
         del state["search_kwargs"]
 
+    #Bind tools dynamically (retriever tool per request)
     model = llm.bind_tools([retriever_tool])
 
     # Select the appropriate prompt
@@ -102,6 +102,7 @@ async def agent(state):
     chain = prompt | model
     messages = filter_messages(state["messages"])
 
+    #Use async invoke for LLM call
     response = await chain.ainvoke({"messages": messages})
 
     return {
@@ -137,6 +138,7 @@ async def rewrite(state):
 
     llm = get_llm()
 
+    # Use async invoke for LLM call
     response = await llm.ainvoke(msg)
 
     return {"messages": [response], "rewrite_count": state.get("rewrite_count") + 1}
@@ -161,6 +163,7 @@ async def generate(state):
 
     llm = get_llm()
 
+    # Use async invoke for LLM call
     rag_chain = prompt | llm | StrOutputParser()
     response = await rag_chain.ainvoke({"context": docs, "question": question})
 

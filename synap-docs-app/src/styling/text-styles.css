@@ -2,7 +2,9 @@
     font-family: ibm-plex-mono, sans-serif;
     font-weight: 500;
     font-style: normal;
+    /* For Firefox */
     scrollbar-width: none;
+    /* For Internet Explorer 10+ */
     -ms-overflow-style: none;
 }
 
@@ -55,7 +57,7 @@
 }
 
 .messages a {
-    color: #3182ce; 
+    color: #3182ce; /* Or your chosen link color */
     text-decoration: underline;
 }
 
@@ -90,6 +92,7 @@
 }
 
 .messages::-webkit-scrollbar {
+    /* For Chrome, Safari, and Opera */
     display: none;
 }
 

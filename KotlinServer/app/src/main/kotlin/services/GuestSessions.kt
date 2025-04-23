@@ -11,30 +11,11 @@ import io.ktor.client.request.delete
 import io.ktor.client.request.parameter
 import kotlinx.serialization.Serializable
 
-// SessionManager manages the list of guest sessions in memory.
-object SessionManager {
-    private val _guestSessionList = mutableListOf<GuestSession>()
+var guestSessionList: java.util.ArrayList<GuestSession> = ArrayList()
 
-    val guestSessionList: List<GuestSession>
-        get() = _guestSessionList
-
-    fun addGuestSession(session: GuestSession) {
-        _guestSessionList.add(session)
-    }
-
-    fun removeGuestSession(session: GuestSession) {
-        _guestSessionList.remove(session)
-    }
-}
-
-// Data class representing a guest session.
-// A unique sessionId is generated for each guest and a createdAt timestamp is recorded.
 @Serializable
 data class GuestSession(val sessionId: String = "guest_" + UUID.randomUUID().toString(), val createdAt: Long = System.currentTimeMillis())
 
-// Cleans up all data associated with a guest session.
-// This function deletes guest uploads, chat data from the database,
-// and also removes associated files and threads from the Python server.
 suspend fun cleanupGuestSession(client: HttpClient, guestSession: GuestSession) {
     val sessionId = guestSession.sessionId
     val allDocs: List<String> = transaction {
@@ -59,7 +40,6 @@ suspend fun cleanupGuestSession(client: HttpClient, guestSession: GuestSession) 
             parameter("doc_name", doc)
         }
     }
-    // Delete associated threads on the Python server.
     for (threadId in allThreadIds) {
         client.delete("$pythonServerUrl/delete-state/") {
             parameter("thread_id", threadId)

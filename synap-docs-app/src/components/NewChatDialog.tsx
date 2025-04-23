@@ -1,6 +1,3 @@
-// When a user clicks "new chat" button it will trigger a dialog to popup to select the pdfs 
-// the user wants to query. Will not start new chat unless at least one pdf is selected 
-
 import React, { useState } from 'react';
 import { Button, VStack, Flex, Text, Switch, Dialog, Portal } from '@chakra-ui/react';
 import { LuPlus, LuX, LuCheck } from 'react-icons/lu';
@@ -40,7 +37,7 @@ const NewChatDialog: React.FC<NewChatDialogProps> = ({ documents, selectedDocs, 
                         </Dialog.Header>
                         <Dialog.Body spaceY="4">
                             {documents.length === 0 ? (
-                                <Text>No upload docs</Text>
+                                <Text>No uploaded docs</Text>
                             ) : (
                                 <VStack align="start" gap={3}>
                                     {documents.map((doc, index) => (

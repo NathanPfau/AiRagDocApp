@@ -1,25 +1,21 @@
-// Sidebar holds two Accordions, one for the list of previous chats and one for uploaded pdfs
-// Each Chat and pdf listed has a Ellipsis button that triggers a menu to popup giving 
-// the option th delete the item
 'use client';
 
 import React from 'react';
-import { Box, Flex, Text, Stack, Icon, IconButton, BoxProps, List, ListItem, Button,Heading,} from '@chakra-ui/react';
+import { Box, Flex, Text, Stack, Icon, IconButton, BoxProps, List, ListItem, Button, Heading,} from '@chakra-ui/react';
 import { LuMessageSquareText, LuFileText, LuEllipsis, LuLogOut, LuLogIn } from 'react-icons/lu';
 import { AccordionItem, AccordionItemContent, AccordionItemTrigger, AccordionRoot,} from '@/components/ui/accordion';
 import { MenuRoot, MenuTrigger, MenuContent, MenuItem,} from '@/components/ui/menu';
 import NewChatDialog from "./NewChatDialog"
 import UploadDoc from './UploadDoc';
-import "../styling/glass.css"
 
-interface Chat {
+interface ChatItem {
   threadId: string;
   chatName: string;
   chatDocs: string[];
 }
 
 export interface SidebarProps extends BoxProps {
-  chats: Chat[];
+  chats: ChatItem[];
   documents: string[];
   onSelectChat: (threadId: string) => void;
   onDeleteChat: (chatId: string) => void;
@@ -42,12 +38,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   onUpload,
   isGuest,
 }) => {
+  // Toggle between light/dark mode
+    // const { colorMode, toggleColorMode } = useColorMode();
     const textColor = 'white';
     const handleLogout = () => {
       window.location.href = "https://synapdocs.com/logout";
-    };
-    const handleLogin = () => {
-      window.location.href = "https://synapdocs.com/login";
     };
 
   return (
@@ -225,7 +220,9 @@ const Sidebar: React.FC<SidebarProps> = ({
           justifyContent="flex-start"
           mb={3}
           _hover={{ cursor: 'pointer' }}
-          onClick={handleLogin}          
+          onClick={() => window.location.href = 
+            "https://synapdocs.com/login"
+          }          
           >
           <LuLogIn style={{ marginRight: '0.5rem' }} />
           Login

@@ -1,9 +1,3 @@
-/*
-Button class code is a modified version of code originally found at:
-https://codepen.io/aaroniker/pen/rNXRrKp
-Original Author: Aaron Iker
-*/
-
 @property --pos-x {
   syntax: "<percentage>";
   initial-value: 11.14%;

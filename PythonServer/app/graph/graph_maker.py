@@ -1,4 +1,3 @@
-# Defines the graph structure that defines the steps and conditions of agent
 from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode, tools_condition
 from app.graph.agent_state import AgentState
@@ -15,15 +14,15 @@ _db_connection = None
 _lock = asyncio.Lock()  #Prevents race conditions when initializing the graph
 
 async def get_db_connection():
-    """Ensure there is a persistent database connection."""
+    """Ensure we have a persistent database connection."""
     global _db_connection
-    if _db_connection is None or _db_connection.closed: 
+    if _db_connection is None or _db_connection.closed:  #Check if closed
         _db_connection = await AsyncConnection.connect(f"postgresql://{Config.RDS_USER}:{Config.RDS_PASSWORD}@{Config.RDS_HOST}:{Config.RDS_PORT}/{Config.RDS_DB}", **Config.connection_kwargs)
     return _db_connection
 
 async def retrieve_tool_wrapper(state):
     """Retrieves a dynamically generated retriever tool based on search criteria."""
-    search_kwargs = state.get("search_kwargs", {}) 
+    search_kwargs = state.get("search_kwargs", {})  # Extract search filters
     return await get_retriever_tool(search_kwargs)
 
 async def agent_wrapper(state):
@@ -46,7 +45,7 @@ async def make_graph():
             # Define a new graph
             workflow = StateGraph(AgentState)
             
-            retriever_tool = await retrieve_tool_wrapper({})  
+            retriever_tool = await retrieve_tool_wrapper({})  # Ensure tool is created
             retrieve = ToolNode([retriever_tool])
 
             workflow.add_node("agent", RunnableLambda(agent_wrapper))  #Async wrapper

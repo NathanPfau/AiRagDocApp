@@ -32,12 +32,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 
-/**
- * Routes for the user api calls. Connects to the python server to send pdfs, send queries,
- * delete chats, delete pdfs, and receives the responses from the api agent.
- *
- * Also makes changes to the database defined in ../services/DatabaseTables.kt
- */
 const val region_ : String = "us-west-2"
 
 @Serializable
@@ -61,6 +55,18 @@ data class ChatDoc(
     val documentName: String
 )
 
+@Serializable
+data class ChatMessageDTO(
+    val sender: String,
+    val message: String
+)
+
+@Serializable
+data class MessagesResponse(
+    val messages: List<ChatMessageDTO>,
+    val chatDocs: List<String>
+)
+
 fun Route.userRoutes(client: HttpClient) {
 
     route("/chat-page") {
@@ -69,22 +75,16 @@ fun Route.userRoutes(client: HttpClient) {
             this.region = region_
         }
 
-        // Initialize user session: retrieves user session data including document names and chats for the user.
-
         get("/session-init") {
-            // Get user ID from session; if null, respond with Unauthorized.
             try {
                 val effectiveUserId: String? = call.getEffectiveUserId()
                 if (effectiveUserId == null) {
-                    call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "No session found"))
                 } else {
-                    // Retrieve documents for the user from the database.
                     val documents: List<String> = transaction {
                         val docs: List<String> = UserDocuments.selectAll().where { UserDocuments.userId eq effectiveUserId }
                             .map { it[UserDocuments.documentName] }
                         docs
                     }
-                    // Retrieve chats for the user from the database.
                     val chats: List<Map<String, String>> = transaction {
                         val ch: List<Map<String, String>> = UserChats.selectAll().where { UserChats.userId eq effectiveUserId }
                             .map { mapOf("thread_id" to it[UserChats.threadId], "chat_name" to it[UserChats.chatName]) }
@@ -98,7 +98,6 @@ fun Route.userRoutes(client: HttpClient) {
                         cds
                     }
 
-                    // Build list of Chat objects with their associated documents.
                     val chatList: List<Chat> = chats.map { chatMap ->
                         val threadId = chatMap["thread_id"]!!
                         val chatName = chatMap["chat_name"]!!
@@ -107,6 +106,7 @@ fun Route.userRoutes(client: HttpClient) {
                             .map { it["document_name"]!! }
                         Chat(threadId, chatName, chatDocsForChat)
                     }
+                    val chatDocsList: List<ChatDoc> = chatDocs.map { ChatDoc(it["thread_id"]!!, it["document_name"]!!) }
 
                     val sessionResponse = SessionResponse(
                         userId = effectiveUserId,
@@ -115,18 +115,16 @@ fun Route.userRoutes(client: HttpClient) {
                         isGuest = effectiveUserId.startsWith("guest_"),
                     )
 
-                    // Respond with the user session data.
                     call.respond(HttpStatusCode.OK, sessionResponse)
                 }
             } catch (e: Exception) {
-                call.application.environment.log.error("Error in /session-init", e)
                 call.respond(HttpStatusCode.InternalServerError, "Error in /session-init")
             }
         }
 
         route("/documents") {
 
-            // POST /documents: Upload a new document file.
+            // POST /documents
             post {
                 try {
                     val multipart = call.receiveMultipart()
@@ -154,19 +152,16 @@ fun Route.userRoutes(client: HttpClient) {
                         part.dispose()
                     }
 
-                    // Check that all required form data is present.
                     if (userId == null || source == null || filePart == null) {
                         call.respondText("Missing form data", status = HttpStatusCode.BadRequest)
                         return@post
                     }
 
-                    // Ensure the uploaded file is not empty.
                     if (fileBytes?.isEmpty() == true) {
                         call.respondText("fileBytes empty", status = HttpStatusCode.BadRequest)
                         return@post
                     }
 
-                    // Submit the form with binary data to the python server for PDF upload.
                     val response: HttpResponse = client.submitFormWithBinaryData(
                         url = "$pythonServerUrl/upload-pdf/",
                         formData = formData {
@@ -179,7 +174,6 @@ fun Route.userRoutes(client: HttpClient) {
                         }
                     )
 
-                    // If upload successful, insert the document record into the database.
                     if (response.status.isSuccess()) {
                         transaction {
                             UserDocuments.insert {
@@ -192,20 +186,16 @@ fun Route.userRoutes(client: HttpClient) {
                         call.respondText("Upload failed: ${response.bodyAsText()}", status = response.status)
                     }
                 } catch (e: Exception) {
-                    call.application.environment.log.error("Error in POST /documents", e)
                     call.respond(HttpStatusCode.InternalServerError, "Error in POST /documents")
                 }
             }
-
-            // DELETE /documents: Remove an existing document based on query parameters.
+            // DELETE /documents?user_id=...&document_name=...
             delete {
                 try {
                     val userId = call.request.queryParameters["user_id"]
                         ?: return@delete call.respondText("Missing user_id", status = HttpStatusCode.BadRequest)
                     val docName = call.request.queryParameters["doc_name"]
                         ?: return@delete call.respondText("Missing doc_name", status = HttpStatusCode.BadRequest)
-
-                    // Call the python server to delete the document.
                     val response: HttpResponse = client.delete("$pythonServerUrl/delete-doc/") {
                         parameter("user_id", userId)
                         parameter("doc_name", docName)
@@ -213,7 +203,6 @@ fun Route.userRoutes(client: HttpClient) {
                     call.respondText(response.bodyAsText(), status = response.status)
 
                     if (response.status.isSuccess()) {
-                        // If deletion successful, remove the document records from the database.
                         transaction {
                             UserChatDocuments.deleteWhere {
                                 (UserChatDocuments.userId eq userId) and (UserChatDocuments.documentName eq docName)
@@ -228,7 +217,6 @@ fun Route.userRoutes(client: HttpClient) {
                         call.respond(HttpStatusCode.BadRequest, "Document not deleted")
                     }
                 } catch (e: Exception) {
-                    call.application.environment.log.error("Error in DELETE /documents", e)
                     call.respond(HttpStatusCode.InternalServerError, "Error in DELETE /documents")
                 }
             }
@@ -237,20 +225,16 @@ fun Route.userRoutes(client: HttpClient) {
 
         route("/chats") {
 
-            // POST /chats: Create a new chat and insert associated chat documents.
             post {
                 try {
-                    // Extract query parameters required to create a chat.
                     val userId = call.request.queryParameters["user_id"]
                         ?: return@post call.respondText("Missing user_id", status = HttpStatusCode.BadRequest)
                     val threadId = call.request.queryParameters["thread_id"]
                         ?: return@post call.respondText("Missing thread_id", status = HttpStatusCode.BadRequest)
                     val chatName = call.request.queryParameters["chat_name"]
                         ?: return@post call.respondText("Missing user_id", status = HttpStatusCode.BadRequest)
-                    // Retrieve associated document names for the chat.
                     val chatDocs = call.request.queryParameters.getAll("document_names") ?: listOf()
 
-                    // Insert the new chat record into the UserChats table.
                     transaction {
                         UserChats.insert {
                             it[UserChats.userId] = userId
@@ -258,7 +242,6 @@ fun Route.userRoutes(client: HttpClient) {
                             it[UserChats.chatName] = chatName
                         }
                     }
-                    // Insert each associated document record into the UserChatDocuments table.
                     transaction {
                         for (docName in chatDocs) {
                             UserChatDocuments.insert {
@@ -268,29 +251,24 @@ fun Route.userRoutes(client: HttpClient) {
                             }
                         }
                     }
-                    call.respond(HttpStatusCode.Created, "Chat documents added")
+                    call.respond(HttpStatusCode.Created, "Chat added")
                 } catch (e: Exception) {
-                    call.application.environment.log.error("Error in POST /chats", e)
                     call.respond(HttpStatusCode.InternalServerError, "Error in POST /chats")
                 }
             }
-            // DELETE /chats: Delete a chat specified by userId, threadId, and chatName.
+            // DELETE /chats?user_id=...&thread_id=...&chat_name=...
             delete {
                 try {
-                    // Extract required query parameters for chat deletion.
                     val userId = call.request.queryParameters["userId"]
                         ?: return@delete call.respondText("Missing userId", status = HttpStatusCode.BadRequest)
                     val threadId = call.request.queryParameters["thread_id"]
                         ?: return@delete call.respondText("Missing thread_id", status = HttpStatusCode.BadRequest)
                     val chatName = call.request.queryParameters["chatName"]
                         ?: return@delete call.respondText("Missing chatName", status = HttpStatusCode.BadRequest)
-
-                    // Call the python server to delete the chat state.
                     val response: HttpResponse = client.delete("$pythonServerUrl/delete-state/") {
                         parameter("thread_id", threadId)
                     }
                     if (response.status.isSuccess()) {
-                        // If deletion successful, remove the chat record from the database.
                         transaction {
                             UserChats.deleteWhere {
                                 (UserChats.userId eq userId) and
@@ -303,46 +281,43 @@ fun Route.userRoutes(client: HttpClient) {
                         call.respond(HttpStatusCode.BadRequest, "Chat deletion failed")
                     }
                 } catch (e: Exception) {
-                    call.application.environment.log.error("Error in DELETE /chats", e)
                     call.respond(HttpStatusCode.InternalServerError, "Error in DELETE /chats")
                 }
             }
         }
 
         route("/messages") {
-            // GET /messages: Retrieve the message chain for a given thread.
             get {
                 try {
-                    // Extract thread_id from query parameters.
                     val threadId = call.request.queryParameters["thread_id"]
                         ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing thread_id")
-
-                    // Retrieve messages for the thread from the database, ordered by timeSent.
-                    val messageChain = transaction {
-                        ChatMessages.selectAll()
+                    val messageChain: List<ChatMessageDTO> = transaction {
+                        ChatMessages
+                            .selectAll()
                             .where { ChatMessages.threadId eq threadId }
                             .orderBy(ChatMessages.timeSent to SortOrder.ASC)
-                            .map {
-                                mapOf(
-                                    "sender" to it[ChatMessages.sender],
-                                    "message" to it[ChatMessages.message],
+                            .map { row ->
+                                ChatMessageDTO(
+                                    sender  = row[ChatMessages.sender],
+                                    message = row[ChatMessages.message]
                                 )
                             }
                     }
-                    // Respond with the retrieved message chain.
-                    call.respond(HttpStatusCode.OK, messageChain)
+                    val chatDocs: List<String> = transaction {
+                        UserChatDocuments.selectAll().where { UserChatDocuments.threadId eq threadId }
+                            .map { it[UserChatDocuments.documentName] }
+                    }
+                    call.respond(HttpStatusCode.OK, MessagesResponse(messages = messageChain, chatDocs = chatDocs))
                 } catch (e: Exception) {
-                    call.application.environment.log.error("Error in GET /messages", e)
+                    call.application.environment.log.error("Error sending chat messages and docs", e)
                     call.respond(HttpStatusCode.InternalServerError, "Error in GET /messages")
                 }
             }
         }
 
         route("/ask") {
-            // GET /ask: Send a query to the AI service and store the conversation.
             get {
                 try {
-                    // Extract required query parameters.
                     val query = call.request.queryParameters["query"]
                         ?: return@get call.respondText("Missing query", status = HttpStatusCode.BadRequest)
                     val threadId = call.request.queryParameters["thread_id"]
@@ -351,7 +326,10 @@ fun Route.userRoutes(client: HttpClient) {
                         ?: return@get call.respondText("Missing user_id", status = HttpStatusCode.BadRequest)
                     val documentNames = call.request.queryParameters.getAll("document_names") ?: listOf()
 
-                    // Call the external AI service with the provided parameters.
+                    if (documentNames.isEmpty()) {
+                        return@get call.respond(HttpStatusCode.BadRequest, "No documents provided")
+                    }
+
                     val response: HttpResponse = client.get("$pythonServerUrl/ask/") {
                         parameter("query", query)
                         parameter("thread_id", threadId)
@@ -361,12 +339,9 @@ fun Route.userRoutes(client: HttpClient) {
                         }
                     }
                     if (response.status.isSuccess()) {
-                        // Parse the AI response.
                         val responseBody = response.bodyAsText()
                         val jsonResponse = Json.parseToJsonElement(responseBody).jsonObject
                         val aiMessage = jsonResponse["response"]?.jsonPrimitive?.content ?: "No content found."
-
-                        // Insert the user's query and the AI's response into the database.
                         transaction {
                             ChatMessages.insert {
                                 it[ChatMessages.threadId] = threadId
@@ -379,13 +354,11 @@ fun Route.userRoutes(client: HttpClient) {
                                 it[ChatMessages.message] = aiMessage
                             }
                         }
-                        // Respond with the AI's message.
                         call.respond(HttpStatusCode.Created, aiMessage)
                     } else {
                         call.respond(HttpStatusCode.BadRequest, "Failed to ask")
                     }
                 } catch (e: Exception) {
-                    call.application.environment.log.error("Error in GET /ask", e)
                     call.respond(HttpStatusCode.InternalServerError, "Error in GET /ask")
                 }
             }
