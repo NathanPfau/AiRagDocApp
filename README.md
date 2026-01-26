@@ -3,11 +3,11 @@
 
 This project consists of three main parts: 
 
-- **[[#LangChain AI Agent]]**: 
+- **[LangChain AI Agent](#langchain-ai-agent)**:
 	Located in the /PythonServer directory, this component houses the logic for the AI agent. It uses an API to interface with the agent, which was built using the LangChain Python framework and LangGraph to set up its workflow.
-- **[[#Kotlin Ktor Server]]**: 
+- **[Kotlin Ktor Server](#kotlin-ktor-server)**:
 	Located in the /KotlinServer directory, this server sits between the client and the PythonServer. Its purpose is to manage user sessions and store/retrieve data related to past chat history and the names of uploaded PDFs.
-- [[#React Client Side]]:
+- **[React Client Side](#react-client-side)**:
 	Located in the /synap-docs-app directory, this is a single-page application built using React. It features two main views: a landing page that allows users to log in, sign up, or try the app as a guest, and a chat page where users can upload PDFs and interact with the AI agent.
 
 The project is deployed on AWS using an EC2 instance behind an Application Load Balancer (ALB). Registered users have their credentials managed through AWS Cognito, and the ALB authenticates all requests. The ALB also handles TLS offloading before forwarding requests to the EC2 instance, which is connected to an Amazon RDS PostgreSQL instance with the pgvector extension for vector storage, agent states, user message history, and document metadata.
