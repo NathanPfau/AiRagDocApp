@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from app.graph.agent_state import AgentState
 import app.services.prompts as PromptTemplate
 from app.services.llm_service import get_llm
-from app.services.pinecone_service import get_retriever_tool 
+from app.services.pgvector_service import get_retriever_tool
 
 
 def get_last_human_message(messages):

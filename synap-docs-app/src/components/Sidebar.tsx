@@ -8,6 +8,8 @@ import { MenuRoot, MenuTrigger, MenuContent, MenuItem,} from '@/components/ui/me
 import NewChatDialog from "./NewChatDialog"
 import UploadDoc from './UploadDoc';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 interface ChatItem {
   threadId: string;
   chatName: string;
@@ -42,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     // const { colorMode, toggleColorMode } = useColorMode();
     const textColor = 'white';
     const handleLogout = () => {
-      window.location.href = "https://synapdocs.com/logout";
+      window.location.href = `${API_BASE_URL}/logout`;
     };
 
   return (
@@ -220,8 +222,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           justifyContent="flex-start"
           mb={3}
           _hover={{ cursor: 'pointer' }}
-          onClick={() => window.location.href = 
-            "https://synapdocs.com/login"
+          onClick={() => window.location.href =
+            `${API_BASE_URL}/login`
           }          
           >
           <LuLogIn style={{ marginRight: '0.5rem' }} />

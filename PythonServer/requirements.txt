@@ -1,14 +1,13 @@
 fastapi
 uvicorn
-pinecone-client
 pdfplumber
 langchain
-langchain-pinecone
+langchain-postgres
 langchain-aws
 pydantic
 python-dotenv
 langchain_text_splitters
-psycopg[binary]
+psycopg[binary,pool]
 asyncpg
 langsmith
 langchain_core

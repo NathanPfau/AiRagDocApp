@@ -1,12 +1,12 @@
 from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode, tools_condition
 from app.graph.agent_state import AgentState
-import app.graph.nodes as nodes 
-from app.services.pinecone_service import get_retriever_tool
+import app.graph.nodes as nodes
+from app.services.pgvector_service import get_retriever_tool
 from app.config import Config
 from psycopg import AsyncConnection
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver 
-from langchain.schema.runnable import RunnableLambda
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langchain_core.runnables import RunnableLambda
 import asyncio
 
 _graph=None

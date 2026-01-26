@@ -15,6 +15,8 @@ import io.ktor.server.response.*
 import io.ktor.http.*
 import io.ktor.client.*
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.sse.SSE
+import kotlin.time.Duration.Companion.milliseconds
 import io.ktor.server.engine.EngineConnectorBuilder
 import io.ktor.server.http.content.staticFiles
 import io.ktor.server.sessions.Sessions
@@ -26,9 +28,9 @@ import org.example.app.services.cleanupGuestSession
 import org.example.app.services.guestSessionList
 import routes.healthRoutes
 import routes.userRoutes
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.example.app.services.ChatMessages
 import org.example.app.services.UserChatDocuments
 import org.example.app.services.UserChats
@@ -37,14 +39,19 @@ import io.ktor.http.encodeURLPath
 
 val dotenv: Dotenv = Dotenv.configure()
     .directory("./")
+    .ignoreIfMissing()
     .load()
-val pythonServerUrl = dotenv["PYTHON_URL"] ?: throw IllegalStateException("PYTHON_URL is not set")
-val rdsHost = dotenv["RDS_HOST"] ?: throw IllegalStateException("RDS_URL is not set")
-val rdsUsername = dotenv["RDS_USERNAME"] ?: throw IllegalStateException("RDS_USERNAME is not set")
-val rdsPassword = dotenv["RDS_PASSWORD"] ?: throw IllegalStateException("RDS_PASSWORD is not set")
-val clientId = dotenv["COGNITO_CLIENT_ID"] ?: throw IllegalStateException("COGNITO_CLIENT_ID is not set")
-val cognitoDomain = dotenv["COGNITO_DOMAIN"] ?: throw IllegalStateException("COGNITO_DOMAIN is not set")
-val logoutRedirectUri = dotenv["LOGOUT_REDIRECT_URI"] ?: throw IllegalStateException("LOGOUT_REDIRECT_URI is not set")
+
+// Helper function to get env var: system environment first, then dotenv file
+fun getEnv(key: String): String = System.getenv(key) ?: dotenv[key] ?: throw IllegalStateException("$key is not set")
+
+val pythonServerUrl = getEnv("PYTHON_URL")
+val rdsHost = getEnv("RDS_HOST")
+val rdsUsername = getEnv("RDS_USERNAME")
+val rdsPassword = getEnv("RDS_PASSWORD")
+val clientId = getEnv("COGNITO_CLIENT_ID")
+val cognitoDomain = getEnv("COGNITO_DOMAIN")
+val logoutRedirectUri = getEnv("LOGOUT_REDIRECT_URI")
 
 fun main(args: Array<String>) {
     embeddedServer(Netty, configure = {
@@ -86,6 +93,9 @@ fun main(args: Array<String>) {
         val client = HttpClient(){
             install(HttpTimeout){
                 requestTimeoutMillis = 360000
+            }
+            install(SSE) {
+                reconnectionTime = 5000.milliseconds
             }
         }
 

@@ -2,11 +2,11 @@ package org.example.app.services
 
 import io.ktor.client.HttpClient
 import org.example.app.pythonServerUrl
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.util.UUID
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.core.eq
 import io.ktor.client.request.delete
 import io.ktor.client.request.parameter
 import kotlinx.serialization.Serializable
