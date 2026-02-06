@@ -188,13 +188,6 @@ export default function ChatPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    useEffect(() => {
-        if (selectedChat) {
-            const chatItem = chats.find(c => c.threadId === selectedChat);
-            setSelectedDocs(chatItem?.chatDocs || []);
-        }
-    }, [selectedChat, chats]);
-
     // Process token queue with delays for smooth typing effect
     const processTokenQueue = useCallback(async (messageId: string) => {
         if (isProcessingQueueRef.current || tokenQueueRef.current.length === 0) {

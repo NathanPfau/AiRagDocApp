@@ -165,6 +165,13 @@ async def ask_question_stream(request: Request):
 
                             # Only process streaming events from LLM calls
                             if event_type == "on_chat_model_stream":
+                                # Only stream tokens from the generate and agent nodes.
+                                # Exclude rewrite (query reformulation) and grade_documents
+                                # (relevance scoring) since those are internal graph steps.
+                                node_name = event.get("metadata", {}).get("langgraph_node")
+                                if node_name in ("rewrite", "grade_documents"):
+                                    continue
+
                                 chunk = event.get("data", {}).get("chunk", {})
 
                                 # Extract content using hasattr for proper attribute access

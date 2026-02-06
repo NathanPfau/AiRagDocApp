@@ -3,6 +3,7 @@ from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, Field
 from langsmith import traceable
 from langchain_core.messages import AIMessage, HumanMessage
+from langgraph.prebuilt import ToolNode
 from app.graph.agent_state import AgentState
 import app.services.prompts as PromptTemplate
 from app.services.llm_service import get_llm
@@ -87,9 +88,6 @@ async def agent(state):
     #Dynamically create retriever tool for this request
     retriever_tool = await get_retriever_tool(search_kwargs)
 
-    if "search_kwargs" in state:
-        del state["search_kwargs"]
-
     #Bind tools dynamically (retriever tool per request)
     model = llm.bind_tools([retriever_tool])
 
@@ -168,3 +166,15 @@ async def generate(state):
     response = await rag_chain.ainvoke({"context": docs, "question": question})
 
     return {"messages": [response], "rewrite_count": 0}
+
+@traceable
+async def retrieve(state):
+    """
+    Custom retrieve node that creates a filtered retriever tool based on
+    the current request's search_kwargs. This ensures per-request document
+    filtering instead of using a static unfiltered retriever.
+    """
+    search_kwargs = state.get("search_kwargs") or {}
+    retriever_tool = await get_retriever_tool(search_kwargs)
+    tool_node = ToolNode([retriever_tool])
+    return await tool_node.ainvoke(state)
